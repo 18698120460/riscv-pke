@@ -496,7 +496,7 @@ struct vinode *rfs_create(struct vinode *parent, struct dentry *sub_dentry) {
   // Note: DO NOT DELETE CODE BELOW PANIC.
   free_dinode->size = 0;
   free_dinode->type = R_FILE;
-  free_dinode->nlinks = 0;
+  free_dinode->nlinks = 1;
   free_dinode->blocks = 0;
 
   //panic("You need to implement the code of populating a disk inode in lab4_1.\n" );
@@ -596,6 +596,11 @@ int rfs_link(struct vinode *parent, struct dentry *sub_dentry, struct vinode *li
   //    rfs_add_direntry here.
   // 3) persistent the changes to disk. you can use rfs_write_back_vinode here.
   //
+  link_node->nlinks +=1;
+  rfs_add_direntry(parent,sub_dentry->name,link_node->inum);
+  rfs_write_back_vinode(link_node);
+  rfs_write_back_vinode(parent);
+  return 0;
   panic("You need to implement the code for creating a hard link in lab4_3.\n" );
 }
 
@@ -793,10 +798,7 @@ int rfs_readdir(struct vinode *dir_vinode, struct dir *dir, int *offset) {
   // dir->name and dir->inum.
   // note: DO NOT DELETE CODE BELOW PANIC.
   dir->inum = p_direntry->inum;
-  for(int i = 0;i<strlen(p_direntry->name);i++)
-  {
-    dir->name[i] = p_direntry->name[i];
-  }
+  strcpy(dir->name,p_direntry->name);
 
 
   //panic("You need to implement the code for reading a directory entry of rfs in lab4_2.\n" );
