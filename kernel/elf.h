@@ -57,6 +57,7 @@ typedef struct elf_ctx_t {
 
 elf_status elf_init(elf_ctx *ctx, void *info);
 elf_status elf_load(elf_ctx *ctx);
+uint64 elf_fpread(elf_ctx *ctx, void *dest, uint64 nb, uint64 offset);
 
 void load_bincode_from_host_elf(process *p);
 

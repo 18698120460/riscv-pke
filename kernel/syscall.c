@@ -21,6 +21,17 @@ ssize_t sys_user_print(const char* buf, size_t n) {
   return 0;
 }
 
+ssize_t sys_user_print_backtrace(int num)
+{
+  uint64 addreass = current->trapframe->regs.sp+24;
+  int temp = 0;
+  while(temp<num)
+  {
+    
+  }
+  return 0;
+}
+
 //
 // implement the SYS_user_exit syscall
 //
@@ -41,6 +52,8 @@ long do_syscall(long a0, long a1, long a2, long a3, long a4, long a5, long a6, l
       return sys_user_print((const char*)a1, a2);
     case SYS_user_exit:
       return sys_user_exit(a1);
+    case SYS_user_print_backtrace:
+      return sys_user_print_backtrace(a1);
     default:
       panic("Unknown syscall %ld \n", a0);
   }
