@@ -31,6 +31,7 @@ process procs[NPROC];
 
 // current points to the currently running user-mode application.
 process* current = NULL;
+process* blocked_queue_head = NULL;
 
 //
 // switch to a user-mode process
@@ -242,6 +243,24 @@ int do_fork( process* parent)
         child->mapped_info[child->total_mapped_region].seg_type = CODE_SEGMENT;
         child->total_mapped_region++;
         break;
+      case DATA_SEGMENT:
+      {
+        int onimai = 0;
+        while(onimai<parent->mapped_info[i].npages)
+        {
+          uint64 pa_addr = lookup_pa(parent->pagetable, parent->mapped_info[i].va+onimai*PGSIZE);
+          char *child_addr = alloc_page();
+          memcpy(child_addr, (void*)pa_addr,PGSIZE);
+          map_pages(child->pagetable, parent->mapped_info[i].va+onimai*PGSIZE,PGSIZE,(uint64)child_addr,prot_to_type(PROT_WRITE|PROT_READ,1));
+          onimai++;
+        }
+        child->mapped_info[child->total_mapped_region].va = parent->mapped_info[i].va;
+        child->mapped_info[child->total_mapped_region].npages =
+          parent->mapped_info[i].npages;
+        child->mapped_info[child->total_mapped_region].seg_type = DATA_SEGMENT;
+        child->total_mapped_region++;
+        break;
+      }
     }
   }
 
@@ -251,4 +270,104 @@ int do_fork( process* parent)
   insert_to_ready_queue( child );
 
   return child->pid;
+}
+
+void insert_to_blocked_queue(process *proc) 
+{
+  if( blocked_queue_head == NULL )
+  {
+    proc->status = BLOCKED;
+    proc->queue_next = NULL;
+    blocked_queue_head = proc;
+    return;
+  }
+  process *temp;
+  for( temp=blocked_queue_head; temp->queue_next!=NULL; temp=temp->queue_next )
+  {
+    if( temp == proc ) return;
+  }
+  if( temp==proc ) 
+  {
+    return;
+  }
+  temp->queue_next = proc;
+  proc->status = BLOCKED;
+  proc->queue_next = NULL;
+  return;
+}
+
+int do_wait(int pid)
+{
+  int found = 0;
+  if (pid == -1) 
+  {
+    for (int i = 0; i < NPROC; i++)
+      if (procs[i].parent == current) 
+      {
+        found = 1;
+          if (procs[i].status == ZOMBIE) 
+          {
+            procs[i].status = FREE;
+            return i;
+          }
+      }
+    if (found == 0) 
+    {
+      return -1;
+    }   
+    else 
+    {
+      insert_to_blocked_queue(current);
+      return -2;
+    }     
+  }
+  else if (pid < NPROC) 
+  {     
+    if (procs[pid].parent != current) return -1;
+    else 
+    {
+      if (procs[pid].status == ZOMBIE) 
+      {
+        procs[pid].status = FREE;
+        return pid;
+      }
+      else 
+      {
+        insert_to_blocked_queue(current);
+        return -2;
+      }  
+    }
+  }
+  else return -1;   //invalid inputs
+}
+
+void remove_and_insert(process* proc)
+{
+  process* cnm = NULL;
+  process* qaq;
+  if(blocked_queue_head == NULL) 
+  {
+    return;
+  }
+  if(blocked_queue_head == proc->parent)
+  {
+    cnm = blocked_queue_head;
+    blocked_queue_head = blocked_queue_head->queue_next;
+    cnm->status = READY;
+    insert_to_ready_queue(cnm);
+    return;
+  }
+  qaq = blocked_queue_head;
+  while(qaq->queue_next!=NULL)
+  {
+    if( qaq->queue_next == proc->parent ) 
+    {
+      cnm = qaq->queue_next;
+      qaq->queue_next = qaq->queue_next->queue_next;
+      cnm->status = READY;
+      insert_to_ready_queue(cnm);
+      return;
+    }
+    qaq = qaq->queue_next;
+  }
 }
