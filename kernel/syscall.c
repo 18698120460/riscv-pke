@@ -105,6 +105,13 @@ ssize_t sys_user_yield() {
 //
 ssize_t sys_user_open(char *pathva, int flags) {
   char* pathpa = (char*)user_va_to_pa((pagetable_t)(current->pagetable), pathva);
+  if(pathpa[0] == '.')
+  {
+    char absolute[MAX_DENTRY_NAME_LEN];
+    absolute[strlen(absolute)] = '\0';
+    get_ab_path(pathpa,absolute);
+    return do_open(absolute,flags);
+  }
   return do_open(pathpa, flags);
 }
 
@@ -218,6 +225,18 @@ ssize_t sys_user_unlink(char * vfn){
   return do_unlink(pfn);
 }
 
+ssize_t sys_user_rcwd(char *path)
+{
+  char *pa_path = (char *)user_va_to_pa((pagetable_t)(current->pagetable), path);
+  return do_rcwd(pa_path);
+}
+
+ssize_t sys_user_ccwd(char *path)
+{
+  char *pa_path = (char *)user_va_to_pa((pagetable_t)(current->pagetable), path);
+  return do_ccwd(pa_path);
+}
+
 //
 // [a0]: the syscall number; [a1] ... [a7]: arguments to the syscalls.
 // returns the code of success, (e.g., 0 means success, fail for otherwise)
@@ -266,6 +285,10 @@ long do_syscall(long a0, long a1, long a2, long a3, long a4, long a5, long a6, l
       return sys_user_link((char *)a1, (char *)a2);
     case SYS_user_unlink:
       return sys_user_unlink((char *)a1);
+    case SYS_user_rcwd:
+      return sys_user_rcwd((char*)a1);
+    case SYS_user_ccwd:
+      return sys_user_ccwd((char*)a1);
     default:
       panic("Unknown syscall %ld \n", a0);
   }

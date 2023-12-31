@@ -9,6 +9,7 @@
 #include "util/types.h"
 #include "util/snprintf.h"
 #include "kernel/syscall.h"
+#include <string.h>
 
 uint64 do_user_call(uint64 sysnum, uint64 a1, uint64 a2, uint64 a3, uint64 a4, uint64 a5, uint64 a6,
                  uint64 a7) {
@@ -172,6 +173,8 @@ int close(int fd) {
 // lib call to read present working directory (pwd)
 //
 int read_cwd(char *path) {
+  //path[strlen(path)] = '\0';
+  path[0] = '\0';
   return do_user_call(SYS_user_rcwd, (uint64)path, 0, 0, 0, 0, 0, 0);
 }
 

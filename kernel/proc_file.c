@@ -75,18 +75,61 @@ struct file *get_opened_file(int fd) {
   return pfile;
 }
 
+void get_ab_path(char* relative, char*absolute)
+{
+  struct dentry* temp = current->pfiles->cwd;
+  if(relative[0] == '.' && relative[1] == '.')
+  {
+    temp = temp->parent;
+  }
+  while(temp)
+  {
+    char arr[MAX_DENTRY_NAME_LEN];
+    memcpy(arr,absolute,strlen(absolute));
+    arr[strlen(arr)] = '\0';
+    memcpy(absolute,temp->name,strlen(temp->name));
+    //sprint("%s\n",temp->name);
+    absolute[strlen(temp->name)] = '\0';
+    if(temp->parent != NULL)
+    {
+      absolute[strlen(absolute)] = '/';
+      absolute[strlen(absolute)] = '\0';
+    }
+    else
+    {
+      absolute[strlen(absolute)] = '\0';
+    }
+    strcat(absolute,arr);
+    temp = temp->parent;
+  }
+  if(relative[0] == '.'&&relative[1] !='.')
+  {
+    strcat(absolute,relative+2);
+  }
+  else if(relative[0] == '.'&&relative[1] == '.')
+  {
+    strcat(absolute, relative+3);
+  }
+  else
+  {
+    strcat(absolute,relative);
+  }
+  //absolute[strlen(absolute)-1] = '\0';
+}
+
 //
 // open a file named as "pathname" with the permission of "flags".
 // return: -1 on failure; non-zero file-descriptor on success.
 //
 int do_open(char *pathname, int flags) {
   struct file *opened_file = NULL;
+  //sprint("%s\n",pathname);
   if ((opened_file = vfs_open(pathname, flags)) == NULL) return -1;
 
   int fd = 0;
-  if (current->pfiles->nfiles >= MAX_FILES) {
+  /*if (current->pfiles->nfiles >= MAX_FILES) {
     panic("do_open: no file entry for current process!\n");
-  }
+  }*/
   struct file *pfile;
   for (fd = 0; fd < MAX_FILES; ++fd) {
     pfile = &(current->pfiles->opened_files[fd]);
@@ -220,4 +263,48 @@ int do_link(char *oldpath, char *newpath) {
 //
 int do_unlink(char *path) {
   return vfs_unlink(path);
+}
+
+
+int do_ccwd(char *path)
+{
+  char dest[MAX_DENTRY_NAME_LEN];
+  memset(dest, '\0', MAX_DENTRY_NAME_LEN);
+  struct dentry* cdir = current->pfiles->cwd;
+  get_ab_path(path,dest);
+  int od = do_opendir(dest);
+  current->pfiles->cwd = current->pfiles->opened_files[od].f_dentry;
+  do_closedir(od);
+  return 0;
+}
+
+int do_rcwd(char *path)
+{
+  struct dentry* cdir = current->pfiles->cwd;
+  if(cdir->parent == NULL)
+  {
+    strcpy(path,"/");
+  }
+  else
+  {
+    while(cdir)
+    {
+      char arr[MAX_DENTRY_NAME_LEN];
+      memcpy(arr,path,strlen(path));
+      arr[strlen(arr)] = '\0';
+      memcpy(path,cdir->name,strlen(cdir->name));
+      path[strlen(cdir->name)] = '\0';
+      //sprint("\n%s %s %s\n",cdir->name,path,arr);
+      if(cdir->parent != NULL)
+      {
+        path[strlen(path)] = '/';
+        path[strlen(path)] = '\0';
+      }
+      strcat(path,arr);
+      cdir = cdir->parent;
+    }
+    path[strlen(path)-1] = '\0';
+    //sprint("\n%s\n",path);
+  }
+  return 0;
 }

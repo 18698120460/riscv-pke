@@ -47,6 +47,7 @@ int main(int argc, char *argv[]) {
   printu("\n======== Test 3: Go to parent directory  ========\n");
 
   pwd();
+  pwd();
   cd("..");
   printu("change current directory to ..\n");
   pwd();
